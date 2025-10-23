@@ -3,7 +3,7 @@
 #define botao 7
 #define bombaPin 8
 #define ledModo 12
-#define ledBomba 11
+#define Bomba 11
 #define sensorMin A1
 #define sensorMax A2
 
@@ -22,7 +22,7 @@ EstadoPoco estadoAtual = POCO_VAZIO;
 EstadoPoco estadoAnterior = POCO_VAZIO;
 
 float calibrationFactor = 242.0;
-const float LIMITE_MOLHADO = 5.0;
+const float LIMITE_MOLHADO = 7.0;
 unsigned long ultimaLeitura = 0;
 
 void setup() {
@@ -34,11 +34,11 @@ void setup() {
   pinMode(botao, INPUT_PULLUP);
   pinMode(bombaPin, OUTPUT);
   pinMode(ledModo, OUTPUT);
-  pinMode(ledBomba, OUTPUT);
+  pinMode(Bomba, OUTPUT);
 
   digitalWrite(bombaPin, LOW);
   digitalWrite(ledModo, LOW);
-  digitalWrite(ledBomba, LOW);
+  digitalWrite(Bomba, LOW);
 }
 
 // --- Funções ---
@@ -101,9 +101,9 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
   bool eminMolhado = tensaoMin <= LIMITE_MOLHADO;
   bool emaxMolhado = tensaoMax <= LIMITE_MOLHADO;
 
-  Serial.print("Emin: ");
+  Serial.print("Vmin: ");
   Serial.print(tensaoMin, 1);
-  Serial.print(" V | Emax: ");
+  Serial.print(" V | Vmax: ");
   Serial.print(tensaoMax, 1);
   Serial.print(" V | ");
 
@@ -112,7 +112,7 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
   // --- Verificação de falha de sensor ---
   if (!eminMolhado && emaxMolhado) {
     estadoAtual = SENSOR_FALHA;
-    Serial.println("🚨 Falha detectada: Sensor inferior com defeito!");
+    Serial.println("🚨 🚨 Falha detectada: Sensor inferior com defeito"); 
     return;
   }
 
@@ -125,7 +125,7 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
         estadoAtual = POCO_ENCHENDO;
         Serial.println("🔄 Poço começando a encher...");
       } else {
-        Serial.println("⚠️ Poço vazio — aguardando enchimento");
+        Serial.println("⚠️ Poço vazio — aguardando enchimento ou 🚨 Falha elétrica: Verifique alimentação AC, relé ou disjuntor!");
       }
       break;
 
@@ -170,7 +170,8 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
       if (eminMolhado || !emaxMolhado) {
         Serial.println("✅ Falha resolvida — voltando à leitura normal");
         estadoAtual = POCO_VAZIO;  // volta à detecção normal
-      } else {
+      } 
+      else {
         Serial.println("🚨 Aguardando correção do sensor inferior...");
       }
       break;
@@ -219,7 +220,7 @@ void ligarBomba() {
   if (!bombaLigada) {
     bombaLigada = true;
     digitalWrite(bombaPin, HIGH);
-    digitalWrite(ledBomba, HIGH);
+    digitalWrite(Bomba, HIGH);
     Serial.println("✅ Bomba LIGADA");
   }
 }
@@ -228,7 +229,7 @@ void desligarBomba() {
   if (bombaLigada) {
     bombaLigada = false;
     digitalWrite(bombaPin, LOW);
-    digitalWrite(ledBomba, LOW);
+    digitalWrite(Bomba, LOW);
     Serial.println("⚠️ Bomba DESLIGADA");
   }
 }
