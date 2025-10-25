@@ -17,13 +17,17 @@ bool modoAutomatico = false;
 bool bombaLigada = false;
 
 // --- Estados do poço ---
-enum EstadoPoco { POCO_CHEIO, POCO_DESCENDO, POCO_VAZIO, POCO_ENCHENDO, SENSOR_FALHA };
+enum EstadoPoco { POCO_CHEIO, POCO_DESCENDO, POCO_VAZIO, POCO_ENCHENDO, SENSOR_FALHA, FALHA_ELETRICA };
 EstadoPoco estadoAtual = POCO_VAZIO;
 EstadoPoco estadoAnterior = POCO_VAZIO;
 
 float calibrationFactor = 242.0;
 const float LIMITE_MOLHADO = 7.0;
 unsigned long ultimaLeitura = 0;
+
+// --- Faixa para detectar falha elétrica ---
+const float LIMITE_FALHA_MIN = 11.0;
+const float LIMITE_FALHA_MAX = 16.0;
 
 void setup() {
   Serial.begin(9600);
@@ -83,7 +87,7 @@ bool tempoDecorrido(unsigned long intervalo) {
 
 // --- Leitura do sensor ZMPT101B ---
 float lerTensaoAC(int pinoSensor) {
-  const int amostras = 500;
+  const int amostras = 3000;
   long soma = 0;
   for (int i = 0; i < amostras; i++) {
     int leituraBruta = analogRead(pinoSensor);
@@ -109,13 +113,15 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
 
   estadoAnterior = estadoAtual;
 
-  // --- Verificação de falha de sensor ---
+
+  // --- Verificação de falha de sensor inferior ---
   if (!eminMolhado && emaxMolhado) {
     estadoAtual = SENSOR_FALHA;
-    Serial.println("🚨 🚨 Falha detectada: Sensor inferior com defeito"); 
+    Serial.println("🚨 Falha detectada: Sensor inferior com defeito!");
     return;
   }
 
+  // --- Lógica normal dos estados ---
   switch (estadoAtual) {
     case POCO_VAZIO:
       if (eminMolhado && emaxMolhado) {
@@ -125,7 +131,7 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
         estadoAtual = POCO_ENCHENDO;
         Serial.println("🔄 Poço começando a encher...");
       } else {
-        Serial.println("⚠️ Poço vazio — aguardando enchimento ou 🚨 Falha elétrica: Verifique alimentação AC, relé ou disjuntor!");
+        Serial.println("⚠️ Poço vazio — aguardando enchimento");
       }
       break;
 
@@ -166,15 +172,14 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
       break;
 
     case SENSOR_FALHA:
-      // Mantém o estado até a falha desaparecer
       if (eminMolhado || !emaxMolhado) {
         Serial.println("✅ Falha resolvida — voltando à leitura normal");
-        estadoAtual = POCO_VAZIO;  // volta à detecção normal
-      } 
-      else {
+        estadoAtual = POCO_VAZIO;
+      } else {
         Serial.println("🚨 Aguardando correção do sensor inferior...");
       }
       break;
+
   }
 
   if (estadoAtual != estadoAnterior) {
@@ -187,7 +192,8 @@ void atualizarEstado(float tensaoMin, float tensaoMax) {
 
 // --- Controle da bomba baseado no estado do poço ---
 void controlarBomba() {
-  if (estadoAtual == SENSOR_FALHA) {
+  // Bloqueia controle durante falha elétrica
+  if (estadoAtual == FALHA_ELETRICA || estadoAtual == SENSOR_FALHA) {
     desligarBomba();
     return;
   }
@@ -211,7 +217,6 @@ void controlarBomba() {
     case POCO_DESCENDO: Serial.println("POÇO DESCENDO"); break;
     case POCO_ENCHENDO: Serial.println("POÇO ENCHENDO"); break;
     case POCO_VAZIO: Serial.println("POÇO VAZIO"); break;
-    case SENSOR_FALHA: Serial.println("SENSOR COM DEFEITO"); break;
   }
 }
 
