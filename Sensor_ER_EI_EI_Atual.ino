@@ -29,6 +29,11 @@ unsigned long ultimaLeitura = 0;
 const float LIMITE_FALHA_MIN = 11.0;
 const float LIMITE_FALHA_MAX = 16.0;
 
+// --- Função mapFloat (conversão proporcional de float) ---
+float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("=== Sistema de Controle de Poço Artesiano com Estados ===");
@@ -87,7 +92,7 @@ bool tempoDecorrido(unsigned long intervalo) {
 
 // --- Leitura do sensor ZMPT101B ---
 float lerTensaoAC(int pinoSensor) {
-  const int amostras = 3000;
+  const int amostras = 1000;
   long soma = 0;
   for (int i = 0; i < amostras; i++) {
     int leituraBruta = analogRead(pinoSensor);
@@ -96,7 +101,9 @@ float lerTensaoAC(int pinoSensor) {
   }
   float media = soma / (float)amostras;
   float rms = sqrt(media);
-  float tensaoSensor = (rms * 5.0) / 1024.0;
+  //float tensaoSensor = (rms * 5.0) / 1024.0;
+  // Usa a função mapFloat para converter RMS proporcionalmente à faixa do ADC
+  float tensaoSensor = mapFloat(rms, 0.0, 512.0, 0.0, 2.5);
   return tensaoSensor * calibrationFactor;
 }
 
